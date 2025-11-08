@@ -1,5 +1,5 @@
 from openai import OpenAI
-
+##要安装库
 client = OpenAI(
     api_key="ms-f940f240-c625-4f7a-bbfb-5388db925ec7", # 请替换成您的ModelScope Access Token
     base_url="https://api-inference.modelscope.cn/v1/"
