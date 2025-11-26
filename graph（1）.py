@@ -6,6 +6,55 @@ import threading
 
 
 class TopicGraph:
+    """话题图结构 - 基于related_topics建立连接"""
+    # 类属性声明
+    chat_groups: List[Dict[str, Any]]
+    graph: Dict[str, List[str]]
+    json_file: str
+    def __init__(self, json_file: str) -> None:
+        ...
+
+    def load_from_json(self, json_file: str) -> None:
+        ...
+
+    def _build_graph_from_data(self) -> None:
+        ...
+
+    def _find_topic_id_by_name(self, topic_name: str) -> str:
+        ...
+
+    def _count_topics(self) -> int:
+        ...
+
+    def save_to_json(self) -> None:
+        ...
+
+    def add_topic_from_json_file(self) -> bool:
+        ...
+
+    def _add_single_topic_from_data(self, group_id: str, topic_data: Dict) -> None:
+        ...
+
+    def get_topic_name_by_id(self, topic_id: str) -> str:
+        ...
+
+    def get_topic_details(self, topic_id: str) -> Dict:
+        ...
+
+    def show_topic_details(self, topic_id: str) -> None:
+        ...
+
+    def list_all_topics(self) -> None:
+        ...
+
+    def search_topics(self, keyword: str) -> None:
+        ...
+
+    def show_graph_structure(self) -> None:
+        .
+
+
+class TopicGraph:
     """增强版话题图结构 - 支持向现有话题添加聊天记录"""
 
     def __init__(self, json_file: str = None, auto_cleanup_days: int = 30):
