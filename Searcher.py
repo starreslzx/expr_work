@@ -7,53 +7,32 @@ from openai import OpenAI
 
 class Searcher:
     def __init__(self, data_file: str = "data.json", token_file: str = "api_token.txt"):
-        """
-        初始化搜索器
-
-        Args:
-            data_file: 数据文件路径，可以是相对路径或绝对路径
-            token_file: API token文件路径，可以是相对路径或绝对路径
-        """
         self.data_file = self._resolve_file_path(data_file)
         self.token_file = self._resolve_file_path(token_file)
         self.data = self._load_data()
         self.client = self._init_openai_client()
 
     def _resolve_file_path(self, file_path: str) -> str:
-        """
-        解析文件路径，处理相对路径和绝对路径
-
-        Args:
-            file_path: 文件路径
-
-        Returns:
-            解析后的绝对路径
-        """
-        # 如果是绝对路径，直接返回
         if os.path.isabs(file_path):
             return file_path
 
-        # 如果是相对路径，尝试多种可能的位置
         possible_paths = [
-            file_path,  # 当前工作目录
-            os.path.join(os.path.dirname(__file__), file_path),  # 脚本所在目录
-            os.path.join(os.path.dirname(__file__), "..", file_path),  # 脚本父目录
+            file_path,
+            os.path.join(os.path.dirname(__file__), file_path),
+            os.path.join(os.path.dirname(__file__), "..", file_path),
         ]
 
         for path in possible_paths:
             if os.path.exists(path):
                 return os.path.abspath(path)
 
-        # 如果没有找到文件，返回原始路径（会在加载时抛出异常）
         return os.path.abspath(file_path)
 
     def _load_data(self) -> Dict[str, Any]:
-        """加载JSON数据"""
         try:
             with open(self.data_file, 'r', encoding='utf-8') as f:
                 content = f.read()
 
-            # 移除以#开头的注释行
             content = re.sub(r'^\s*#.*$', '', content, flags=re.MULTILINE)
 
             return json.loads(content)
@@ -63,7 +42,6 @@ class Searcher:
             raise Exception(f"数据文件 {self.data_file} 格式错误")
 
     def _init_openai_client(self) -> OpenAI:
-        """初始化OpenAI客户端"""
         try:
             with open(self.token_file, 'r', encoding='utf-8') as f:
                 api_key = f.read().strip()
@@ -77,20 +55,7 @@ class Searcher:
 
     def keyword_search(self, query: str, fields: List[str] = None,
                        group_name: str = None, topic_name: str = None) -> List[Dict[str, Any]]:
-        """
-        基于关键词的字符串匹配搜索（返回个数无限制）
-
-        Args:
-            query: 搜索查询
-            fields: 要搜索的字段列表，如果为None则搜索所有文本字段
-            group_name: 指定群聊名称，如果不为空则只在该群聊中搜索
-            topic_name: 指定话题名称，如果不为空则只在该话题中搜索
-
-        Returns:
-            匹配的主题列表
-        """
         if fields is None:
-            # 默认不搜索聊天记录，只搜索话题级别的信息
             fields = ['group_name', 'topic_name', 'summaries', 'related_topics']
 
         results = []
@@ -99,47 +64,40 @@ class Searcher:
         topic_name_lower = topic_name.lower() if topic_name else None
 
         for group in self.data.get('chat_groups', []):
-            # 如果指定了群聊名称，且当前群聊不匹配，则跳过
             if group_name_lower and group_name_lower not in group.get('group_name', '').lower():
                 continue
 
             for topic in group.get('topics', []):
-                # 如果指定了话题名称，且当前话题不匹配，则跳过
                 if topic_name_lower and topic_name_lower not in topic.get('topic_name', '').lower():
                     continue
 
                 score = 0
                 match_details = []
 
-                # 搜索群组名称
                 if 'group_name' in fields:
                     group_name_val = group.get('group_name', '').lower()
                     if query_lower in group_name_val:
                         score += 3
                         match_details.append(f"群组名称匹配: {group['group_name']}")
 
-                # 搜索主题名称
                 if 'topic_name' in fields:
                     topic_name_val = topic.get('topic_name', '').lower()
                     if query_lower in topic_name_val:
                         score += 3
                         match_details.append(f"主题名称匹配: {topic['topic_name']}")
 
-                # 搜索摘要
                 if 'summaries' in fields:
                     for i, summary in enumerate(topic.get('summaries', [])):
                         if query_lower in summary.lower():
                             score += 2
                             match_details.append(f"摘要匹配: {summary}")
 
-                # 搜索相关主题
                 if 'related_topics' in fields:
                     for related_topic in topic.get('related_topics', []):
                         if query_lower in related_topic.lower():
                             score += 2
                             match_details.append(f"相关主题匹配: {related_topic}")
 
-                # 如果匹配到内容，添加到结果
                 if score > 0:
                     result = {
                         'topic_id': topic['topic_id'],
@@ -158,37 +116,23 @@ class Searcher:
                     }
                     results.append(result)
 
-        # 按匹配分数排序（无数量限制）
         results.sort(key=lambda x: x['search_score'], reverse=True)
         return results
 
     def ai_semantic_search(self, query: str, max_results: int = 10,
                            group_name: str = None, topic_name: str = None,
-                           use_batch_mode: bool = False, batch_size: int = 20) -> List[Dict[str, Any]]:
-        """
-        使用AI进行语义搜索，找出相关内容
-
-        Args:
-            query: 用户查询
-            max_results: 最大返回结果数 (默认10)
-            group_name: 指定群聊名称，如果不为空则只在该群聊中搜索
-            topic_name: 指定话题名称，如果不为空则只在该话题中搜索
-            use_batch_mode: 是否使用分批处理模式处理大量数据
-            batch_size: 每批处理的话题数量
-
-        Returns:
-            AI推荐的相关主题列表
-        """
+                           use_batch_mode: bool = False, batch_size: int = 20,
+                           exclude_topic_ids: List[str] = None) -> List[Dict[str, Any]]:
         if use_batch_mode:
-            return self._ai_semantic_search_batch(query, max_results, group_name, topic_name, batch_size)
+            return self._ai_semantic_search_batch(query, max_results, group_name, topic_name, batch_size,
+                                                  exclude_topic_ids)
         else:
-            return self._ai_semantic_search_single(query, max_results, group_name, topic_name)
+            return self._ai_semantic_search_single(query, max_results, group_name, topic_name, exclude_topic_ids)
 
     def _ai_semantic_search_single(self, query: str, max_results: int = 10,
-                                   group_name: str = None, topic_name: str = None) -> List[Dict[str, Any]]:
-        """单次AI语义搜索"""
-        # 构建搜索上下文
-        context = self._build_search_context(group_name, topic_name)
+                                   group_name: str = None, topic_name: str = None,
+                                   exclude_topic_ids: List[str] = None) -> List[Dict[str, Any]]:
+        context = self._build_search_context(group_name, topic_name, exclude_topic_ids)
 
         if not context:
             print("没有找到符合条件的数据用于AI搜索")
@@ -245,15 +189,13 @@ class Searcher:
 
     def _ai_semantic_search_batch(self, query: str, max_results: int = 10,
                                   group_name: str = None, topic_name: str = None,
-                                  batch_size: int = 20) -> List[Dict[str, Any]]:
-        """分批AI语义搜索，处理大量数据"""
-        all_topics = self._get_all_topics(group_name, topic_name)
+                                  batch_size: int = 20, exclude_topic_ids: List[str] = None) -> List[Dict[str, Any]]:
+        all_topics = self._get_all_topics(group_name, topic_name, exclude_topic_ids)
 
         if not all_topics:
             print("没有找到符合条件的数据用于AI搜索")
             return []
 
-        # 分批处理
         batches = [all_topics[i:i + batch_size] for i in range(0, len(all_topics), batch_size)]
         all_results = []
 
@@ -262,7 +204,6 @@ class Searcher:
         for i, batch in enumerate(batches):
             print(f"正在处理第 {i + 1}/{len(batches)} 批数据...")
 
-            # 构建当前批次的上下文
             context = self._build_batch_context(batch)
 
             prompt = f"""
@@ -278,7 +219,7 @@ class Searcher:
             2. 技术概念的关联性
             3. 业务场景的相似性
             4. 用户可能的深层需求
-            5. 不必执着于第4条 ，可以返回空
+            5. 不必执着于第4条 ，如果你认为是输入错误或确实无关联，可以返回空
             重要限制：每个群聊最多只能推荐3个话题！
 
             请以JSON格式返回结果，包含以下字段:
@@ -317,7 +258,6 @@ class Searcher:
         return self._limit_results_per_group(all_results, max_results)
 
     def _limit_results_per_group(self, results: List[Dict[str, Any]], max_results: int) -> List[Dict[str, Any]]:
-        """限制每个群聊的结果数量不超过3个"""
         grouped_results = {}
 
         for result in results:
@@ -334,11 +274,12 @@ class Searcher:
         limited_results.sort(key=lambda x: x['confidence'], reverse=True)
         return limited_results[:max_results]
 
-    def _get_all_topics(self, group_name: str = None, topic_name: str = None) -> List[Dict[str, Any]]:
-        """获取所有符合条件的话题"""
+    def _get_all_topics(self, group_name: str = None, topic_name: str = None, exclude_topic_ids: List[str] = None) -> \
+    List[Dict[str, Any]]:
         all_topics = []
         group_name_lower = group_name.lower() if group_name else None
         topic_name_lower = topic_name.lower() if topic_name else None
+        exclude_set = set(exclude_topic_ids) if exclude_topic_ids else set()
 
         for group in self.data.get('chat_groups', []):
             if group_name_lower and group_name_lower not in group.get('group_name', '').lower():
@@ -346,6 +287,9 @@ class Searcher:
 
             for topic in group.get('topics', []):
                 if topic_name_lower and topic_name_lower not in topic.get('topic_name', '').lower():
+                    continue
+
+                if topic['topic_id'] in exclude_set:
                     continue
 
                 all_topics.append({
@@ -356,7 +300,6 @@ class Searcher:
         return all_topics
 
     def _build_batch_context(self, batch: List[Dict[str, Any]]) -> str:
-        """构建批次的搜索上下文"""
         context_parts = []
 
         for item in batch:
@@ -377,11 +320,12 @@ class Searcher:
 
         return "\n".join(context_parts)
 
-    def _build_search_context(self, group_name: str = None, topic_name: str = None) -> str:
-        """构建AI搜索的上下文"""
+    def _build_search_context(self, group_name: str = None, topic_name: str = None,
+                              exclude_topic_ids: List[str] = None) -> str:
         context_parts = []
         group_name_lower = group_name.lower() if group_name else None
         topic_name_lower = topic_name.lower() if topic_name else None
+        exclude_set = set(exclude_topic_ids) if exclude_topic_ids else set()
 
         for group in self.data.get('chat_groups', []):
             if group_name_lower and group_name_lower not in group.get('group_name', '').lower():
@@ -389,6 +333,9 @@ class Searcher:
 
             for topic in group.get('topics', []):
                 if topic_name_lower and topic_name_lower not in topic.get('topic_name', '').lower():
+                    continue
+
+                if topic['topic_id'] in exclude_set:
                     continue
 
                 topic_info = [
@@ -407,13 +354,12 @@ class Searcher:
 
     def _parse_ai_response(self, ai_response: str, max_results: int,
                            group_name: str = None, topic_name: str = None) -> List[Dict[str, Any]]:
-        """解析AI返回的JSON结果"""
         try:
             json_match = re.search(r'\{.*\}', ai_response, re.DOTALL)
             if json_match:
                 result_data = json.loads(json_match.group())
 
-                recommended_topics = result_data.get('recommended_topics', [])[:max_results * 2]  # 多取一些以便后续筛选
+                recommended_topics = result_data.get('recommended_topics', [])[:max_results * 2]
                 results = []
 
                 for topic_id in recommended_topics:
@@ -439,7 +385,6 @@ class Searcher:
 
     def _find_topic_by_id(self, topic_id: str, group_name: str = None, topic_name: str = None) -> Optional[
         Dict[str, Any]]:
-        """根据主题ID查找主题信息"""
         group_name_lower = group_name.lower() if group_name else None
         topic_name_lower = topic_name.lower() if topic_name else None
 
@@ -470,21 +415,6 @@ class Searcher:
     def search(self, query: str, use_ai: bool = True,
                ai_max_results: int = 10, group_name: str = None, topic_name: str = None,
                use_batch_mode: bool = False, batch_size: int = 20) -> Dict[str, Any]:
-        """
-        综合搜索方法，分别返回关键词搜索结果和AI推荐结果
-
-        Args:
-            query: 搜索查询
-            use_ai: 是否使用AI搜索
-            ai_max_results: AI搜索最大返回结果数 (默认10)
-            group_name: 指定群聊名称，如果不为空则只在该群聊中搜索
-            topic_name: 指定话题名称，如果不为空则只在该话题中搜索
-            use_batch_mode: 是否使用分批处理模式处理大量数据
-            batch_size: 每批处理的话题数量
-
-        Returns:
-            包含关键词搜索结果和AI推荐结果的字典
-        """
         keyword_results = self.keyword_search(
             query,
             group_name=group_name,
@@ -493,13 +423,15 @@ class Searcher:
 
         ai_results = []
         if use_ai and query.strip():
+            exclude_topic_ids = [result['topic_id'] for result in keyword_results]
             ai_results = self.ai_semantic_search(
                 query,
                 max_results=ai_max_results,
                 group_name=group_name,
                 topic_name=topic_name,
                 use_batch_mode=use_batch_mode,
-                batch_size=batch_size
+                batch_size=batch_size,
+                exclude_topic_ids=exclude_topic_ids
             )
 
         return {
@@ -517,7 +449,6 @@ class Searcher:
         }
 
     def display_results(self, search_results: Dict[str, Any]):
-        """格式化显示搜索结果"""
         print(f"\n搜索查询: {search_results['query']} ")
 
         filters = search_results['search_filters']
@@ -559,14 +490,12 @@ class Searcher:
                 print()
 
     def get_available_groups(self) -> List[str]:
-        """获取所有可用的群聊名称"""
         groups = []
         for group in self.data.get('chat_groups', []):
             groups.append(group['group_name'])
         return sorted(groups)
 
     def get_available_topics(self, group_name: str = None) -> List[str]:
-        """获取所有可用的话题名称"""
         topics = []
         group_name_lower = group_name.lower() if group_name else None
 
@@ -577,7 +506,6 @@ class Searcher:
             for topic in group.get('topics', []):
                 topics.append(topic['topic_name'])
         return sorted(topics)
-
 
 
 def main():
@@ -665,7 +593,7 @@ def main():
                 ai_max_results = 10
 
             all_topics_count = len(searcher._get_all_topics(group_name, topic_name))
-            use_batch_mode = all_topics_count > 20  # 如果超过20个话题，使用分批处理
+            use_batch_mode = all_topics_count > 20
 
             if use_batch_mode:
                 print(f"检测到 {all_topics_count} 个话题，将使用分批处理模式")
@@ -712,8 +640,7 @@ def main():
                 'ai_recommendations': len(ai_results)
             }
         }
-        print(keyword_results)
-        print(ai_results)
+
         searcher.display_results(search_results)
 
 
