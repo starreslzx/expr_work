@@ -32,7 +32,7 @@ class ChatAnalyzer:
         解析上传的文件，支持PDF、DOC、DOCX格式
         """
         if not os.path.exists(file_path):
-            raise FileNotFoundError("文件不存在: {file_path}")
+            raise FileNotFoundError(f"文件不存在: {file_path}")
 
         ext = os.path.splitext(file_path)[1].lower()
 
@@ -43,7 +43,7 @@ class ChatAnalyzer:
         elif ext=='.doc':
             return self._parse_doc(file_path)
         else:
-            raise ValueError("不支持的文件格式: {ext}，请上传PDF、DOC或DOCX文件")
+            raise ValueError(f"不支持的文件格式: {ext}，请上传PDF、DOC或DOCX文件")
 
     def _parse_pdf(self,file_path: str) -> List[str]:
         """解析PDF文件"""
@@ -209,11 +209,11 @@ class ChatAnalyzer:
 
         formatted = []
         for i, topic in enumerate(topics, 1):
-            formatted.append("{i}. {topic['topic_name']} (优先级: {topic['priority']})")
+            formatted.append(f"{i}. {topic['topic_name']} (优先级: {topic['priority']})")
             if topic['summaries']:
-                formatted.append("   总结: {topic['summaries'][0]}")
+                formatted.append(f"   总结: {topic['summaries'][0]}")
             if topic['related_topics']:
-                formatted.append("   相关话题: {', '.join(topic['related_topics'][:3])}")
+                formatted.append(f"   相关话题: {', '.join(topic['related_topics'][:3])}")
 
         return "\n".join(formatted)
 
@@ -270,7 +270,7 @@ class ChatAnalyzer:
                 break
         # 如果没有该群聊，创建新的
         if not group_id:
-            group_id = "group_{len(structure['chat_groups']) + 1:03d}"
+            group_id = f"group_{len(structure['chat_groups']) + 1:03d}"
             new_group = {
                 "group_id": group_id,
                 "group_name": group_name,
@@ -283,7 +283,7 @@ class ChatAnalyzer:
             if group["group_id"] == group_id:
                 # 为每个新话题添加ID
                 for topic in new_topics:
-                    topic_id = "topic_{group_id.replace('group_', '')}_{len(group['topics']) + 1:02d}"
+                    topic_id = f"topic_{group_id.replace('group_', '')}_{len(group['topics']) + 1:02d}"
                     topic["topic_id"] = topic_id
                     group["topics"].append(topic)
                 break
@@ -337,6 +337,7 @@ class ChatAnalyzer:
 2. 使用专业但不晦涩的语言
 3. 基于提供的信息进行分析和总结
 4. 如果可能，提供有价值的见解和建议
+5. 不要有无关的字符比如**和##影响报告阅读
 
 报告格式：
 请使用纯文本格式，不要使用Markdown。"""
