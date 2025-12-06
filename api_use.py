@@ -460,5 +460,5 @@ def main():
         print("3. 如果使用文件解析，确保文件路径正确")
 
 
-if __name__ == "__main__":
-    main()
+#if __name__ == "__main__":
+#    main()
