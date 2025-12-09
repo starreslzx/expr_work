@@ -99,7 +99,7 @@ class FrontendManager:
             default_config = {
                 "api_key": "",
                 "base_url": "https://api-inference.modelscope.cn/v1/",
-                "model": "Qwen/Qwen2.5-Coder-32B-Instruct"
+                "model": "qwen3-max"
             }
             with open(config_file, 'w', encoding='utf-8') as f:
                 json.dump(default_config, f, indent=2)
