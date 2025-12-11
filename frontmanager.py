@@ -77,11 +77,11 @@ class FrontendManager:
             'searcher_instance': None,  # 存储分工3实例
             'topic_graph_instance': None,  # 存储分工4实例
             'modules_initialized': False,  # 模块是否已初始化
-            'custom_group_name': "",  # 新增：用户自定义群聊名称
-            'analysis_history': [],  # 新增：分析历史记录
-            'selected_group_for_deletion': None,  # 新增：选择要删除的群聊
-            'graph_group_select': None,  # 修改：话题图谱选择的群聊（修复问题2）
-            'last_search_topic': None,  # 新增：上次搜索跳转的话题
+            'custom_group_name': "",
+            'analysis_history': [],
+            'selected_group_for_deletion': None,
+            'graph_group_select': None,
+            'last_search_topic': None,
             'search_expanded_topic_id': None,
             'search_topic_details': {},
         }
@@ -336,8 +336,7 @@ class FrontendManager:
         """保存API配置"""
         config = {
             "api_key": api_key,
-            "base_url": base_url,
-            "model": "Qwen/Qwen2.5-Coder-32B-Instruct"
+            "base_url": base_url
         }
 
         config_dir = "config"
