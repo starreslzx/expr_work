@@ -542,7 +542,7 @@ class FrontendManager:
             "选择群聊",
             range(len(group_options)),
             format_func=lambda x: group_options[x],
-            key="graph_group_select",  # 修改：使用不同的key避免冲突
+            key="graph_group_select",
             index=default_index
         )
 
@@ -564,7 +564,6 @@ class FrontendManager:
                 if group['group_name'] == selected_group_name:
                     topics = group.get("topics", [])
                     group_name = group['group_name']
-                    # 注意：这里不再设置session_state，避免widget冲突
                     break
 
         if not topics:
@@ -581,7 +580,6 @@ class FrontendManager:
             try:
                 self._render_advanced_topic_graph(topics, group_name)
             except Exception as e:
-                # 问题2：捕获异常，避免弹出报错信息
                 st.warning("话题图渲染遇到问题，使用基础视图")
                 self._render_basic_topic_graph(topics, group_name)
         else:
@@ -589,24 +587,7 @@ class FrontendManager:
             self._render_basic_topic_graph(topics, group_name)
 
     def _render_advanced_topic_graph(self, topics, group_name):
-        """使用分工4模块渲染高级话题图"""
-        # 显示图结构统计
-        with st.expander("📈 图结构统计", expanded=True):
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                # 问题2：安全地获取节点数
-                node_count = len(self.topic_graph.graph) if hasattr(self.topic_graph, 'graph') else 0
-                st.metric("节点数", node_count)
-            with col2:
-                # 问题1：修复连接总数计算
-                total_connections = 0
-                if hasattr(self.topic_graph, 'graph') and self.topic_graph.graph:
-                    for connections in self.topic_graph.graph.values():
-                        total_connections += len(connections)
-                st.metric("连接总数", total_connections // 2)
-            with col3:
-                st.metric("话题总数", len(topics))
-
+        """使用分工4模块渲染高级话题图（简化版，删除了重复的统计信息）"""
         # 显示话题连接详情
         if st.checkbox("显示详细连接", key="show_connections"):
             st.write("**话题连接关系:**")
