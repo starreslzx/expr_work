@@ -1,12 +1,10 @@
 import streamlit as st
-import pandas as pd
 import json
 import plotly.graph_objects as go
 import networkx as nx
 import os
 import sys
 import tempfile
-import uuid
 from datetime import datetime
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -73,9 +71,9 @@ class FrontendManager:
             'data_file': None,
             'api_key': "",
             'base_url': "https://api-inference.modelscope.cn/v1/",
-            'analyzer_instance': None,  # 存储分工1实例
-            'searcher_instance': None,  # 存储分工3实例
-            'topic_graph_instance': None,  # 存储分工4实例
+            'analyzer_instance': None,
+            'searcher_instance': None,
+            'topic_graph_instance': None,
             'modules_initialized': False,  # 模块是否已初始化
             'custom_group_name': "",
             'analysis_history': [],
@@ -84,6 +82,7 @@ class FrontendManager:
             'last_search_topic': None,
             'search_expanded_topic_id': None,
             'search_topic_details': {},
+            'show_add_topic_form': False,
         }
 
         for key, default in session_defaults.items():
@@ -92,7 +91,6 @@ class FrontendManager:
 
     def _init_directory_structure(self):
         """初始化项目目录结构"""
-        # 修改：创建统一的目录结构
         directories = ['output', 'config', 'reports', 'temp']
         for directory in directories:
             if not os.path.exists(directory):
@@ -134,7 +132,7 @@ class FrontendManager:
 
     def init_modules(self):
         """初始化所有模块"""
-        # 初始化分工1模块（聊天记录分析）
+        # 初始化分析模块
         if DIVISION_1_AVAILABLE and st.session_state.api_key:
             try:
                 st.session_state.analyzer_instance = ChatAnalyzer(
@@ -142,18 +140,18 @@ class FrontendManager:
                     base_url=st.session_state.base_url
                 )
                 self.analyzer = st.session_state.analyzer_instance
-                print("✅ 分工1模块初始化成功")
+                print("✅ 分析模块初始化成功")
             except Exception as e:
-                print(f"❌ 分工1模块初始化失败: {e}")
+                print(f"❌ 分析模块初始化失败: {e}")
                 self.analyzer = None
         else:
             self.analyzer = None
             if not DIVISION_1_AVAILABLE:
-                print("⚠️ 分工1模块不可用")
+                print("⚠️ 分析模块不可用")
             else:
-                print("⚠️ 分工1模块未初始化（缺少API密钥）")
+                print("⚠️ 分析模块未初始化（缺少API密钥）")
 
-        # 初始化分工3模块（智能搜索）
+        # 初始化智能搜索模块
         if DIVISION_3_AVAILABLE:
             try:
                 # 检查数据文件是否存在
@@ -170,15 +168,15 @@ class FrontendManager:
                     token_file=token_file
                 )
                 self.searcher = st.session_state.searcher_instance
-                print("✅ 分工3模块初始化成功")
+                print("✅ 智能搜索模块初始化成功")
             except Exception as e:
-                print(f"❌ 分工3模块初始化失败: {e}")
+                print(f"❌ 智能搜索模块初始化失败: {e}")
                 self.searcher = None
         else:
             self.searcher = None
-            print("⚠️ 分工3模块不可用")
+            print("⚠️ 智能搜索模块不可用")
 
-        # 初始化分工4模块
+        # 初始化话题图谱模块
         if DIVISION_4_AVAILABLE:
             try:
                 # 检查数据文件是否存在
@@ -189,13 +187,13 @@ class FrontendManager:
 
                 st.session_state.topic_graph_instance = TopicGraph(graph_file)
                 self.topic_graph = st.session_state.topic_graph_instance
-                print("✅ 分工4模块初始化成功")
+                print("✅ 话题图谱模块初始化成功")
             except Exception as e:
-                print(f"❌ 分工4模块初始化失败: {e}")
+                print(f"❌ 话题图谱模块初始化失败: {e}")
                 self.topic_graph = None
         else:
             self.topic_graph = None
-            print("⚠️ 分工4模块不可用")
+            print("⚠️ 话题图谱模块不可用")
 
         st.session_state.modules_initialized = True
 
@@ -257,19 +255,6 @@ class FrontendManager:
             for key, value in file_details.items():
                 st.sidebar.write(f"- {key}: {value}")
 
-            # 文件内容预览（仅文本文件）
-            if uploaded_file.type.startswith('text/'):
-                try:
-                    content = uploaded_file.getvalue().decode('utf-8')
-                    preview_lines = content.split('\n')[:5]
-                    if any(line.strip() for line in preview_lines):
-                        st.sidebar.write("**内容预览:**")
-                        for line in preview_lines:
-                            if line.strip():
-                                st.sidebar.text(line[:50] + "..." if len(line) > 50 else line)
-                except:
-                    pass
-
         # 群聊名称自定义
         st.sidebar.markdown("### 🏷️ 群聊设置")
         default_group_name = f"聊天记录_{os.path.splitext(uploaded_file.name)[0]}" if uploaded_file else "默认群聊"
@@ -314,19 +299,16 @@ class FrontendManager:
         st.sidebar.markdown("---")
         st.sidebar.markdown("### 🔧 模块状态")
 
-        # 分工1状态
         if self.analyzer:
             st.sidebar.success("✅ 分析模块: 已加载")
         else:
             st.sidebar.warning("⚠️ 分析模块: 未加载")
 
-        # 分工3状态
         if self.searcher:
             st.sidebar.success("✅ 搜索模块: 已加载")
         else:
             st.sidebar.warning("⚠️ 搜索模块: 未加载")
 
-        # 分工4状态
         if self.topic_graph:
             st.sidebar.success("✅ 话题图模块: 已加载")
         else:
@@ -361,9 +343,8 @@ class FrontendManager:
                 tmp_file_path = tmp_file.name
 
             try:
-                # 使用分工1解析文件
                 records = self.analyzer.parse_file(tmp_file_path)
-                st.info(f"成功解析 {len(records)} 条记录")
+                st.info(f"成功解析聊天记录")
 
                 # 检查是否已存在相同名称的群聊
                 existing_structure = None
@@ -371,7 +352,6 @@ class FrontendManager:
 
                 if st.session_state.analysis_data:
                     existing_structure = st.session_state.analysis_data
-                    # 查找是否已存在相同名称的群聊
                     for i, group in enumerate(existing_structure.get("chat_groups", [])):
                         if group["group_name"] == custom_group_name:
                             group_to_replace_index = i
@@ -395,7 +375,6 @@ class FrontendManager:
                 return result
 
             finally:
-                # 清理临时文件
                 if os.path.exists(tmp_file_path):
                     os.unlink(tmp_file_path)
 
@@ -434,11 +413,9 @@ class FrontendManager:
         with open(graph_data_file, 'w', encoding='utf-8') as f:
             json.dump(graph_data, f, ensure_ascii=False, indent=2)
 
-        # 更新分工1实例的数据
         if self.analyzer:
             self.analyzer.chat_structure = st.session_state.analysis_data
 
-        # 更新分工3实例的数据（重新加载）
         if self.searcher and os.path.exists(search_data_file):
             try:
                 self.searcher.data_file = search_data_file
@@ -446,7 +423,6 @@ class FrontendManager:
             except:
                 pass
 
-        # 更新分工4实例的数据（重新加载）
         if self.topic_graph and os.path.exists(graph_data_file):
             try:
                 self.topic_graph.load_from_json(graph_data_file)
@@ -457,13 +433,12 @@ class FrontendManager:
         print("✅ 数据已保存到output目录")
 
     def call_search_api(self, query: str, search_type: str = "keyword"):
-        """直接调用分工3的搜索功能"""
+        """直接调用搜索功能"""
         if not self.searcher:
             st.warning("搜索模块未初始化")
             return {"keyword_results": [], "ai_recommendations": []}
 
         try:
-            # 调用分工3的搜索方法
             search_results = self.searcher.search(
                 query=query,
                 use_ai=(search_type == "ai_semantic"),
@@ -574,7 +549,7 @@ class FrontendManager:
         # 显示统计信息
         self._show_graph_statistics(topics, group_name)
 
-        # 使用分工4的话题图功能
+        # 使用话题图功能
         if self.topic_graph:
             try:
                 self._render_advanced_topic_graph(topics, group_name)
@@ -586,7 +561,7 @@ class FrontendManager:
             self._render_basic_topic_graph(topics, group_name)
 
     def _render_advanced_topic_graph(self, topics, group_name):
-        """使用分工4模块渲染高级话题图（简化版，删除了重复的统计信息）"""
+        """渲染高级话题图"""
         # 显示话题连接详情
         if st.checkbox("显示详细连接", key="show_connections"):
             st.write("**话题连接关系:**")
@@ -611,7 +586,7 @@ class FrontendManager:
         self._render_basic_topic_graph(topics, group_name)
 
     def _render_basic_topic_graph(self, topics, group_name):
-        """渲染基础话题图（原有功能）"""
+        """渲染基础话题图"""
         # 创建网络图
         G = nx.Graph()
 
@@ -808,7 +783,7 @@ class FrontendManager:
                         else:
                             topic['summaries'] = [new_summary]
 
-                        # 如果分工4模块存在，更新话题图数据
+                        # 更新话题图数据
                         if self.topic_graph:
                             self._update_topic_in_graph(topic_id, new_summary)
 
@@ -833,7 +808,7 @@ class FrontendManager:
             print(f"更新话题图失败: {e}")
 
     def generate_topic_report(self, topic_id):
-        """调用分工1生成报告"""
+        """生成报告"""
         if not self.analyzer:
             st.error("分析模块未初始化，无法生成报告")
             return None
@@ -897,15 +872,16 @@ class FrontendManager:
                     st.write(f"**创建时间:** {group.get('created_time', '未知')}")
 
                 with col2:
-                    if st.button("选择删除", key=f"select_delete_{group['group_id']}"):
+                    if st.button("选择删除",
+                                 key=f"select_delete_{group['group_id']}_{i}"):
                         st.session_state.selected_group_for_deletion = group['group_id']
                         st.rerun()
 
                 with col3:
-                    if st.button("导出数据", key=f"export_{group['group_id']}"):
+                    if st.button("导出数据",
+                                 key=f"export_{group['group_id']}_{i}"):
                         self._export_group_data(group)
 
-        # 删除确认对话框
         if st.session_state.selected_group_for_deletion:
             group_to_delete = None
             for group in data["chat_groups"]:
@@ -1194,6 +1170,16 @@ class FrontendManager:
         """渲染话题浏览页面"""
         st.title("🗂️ 话题浏览")
 
+        col1, col2 = st.columns([4, 1])
+        with col2:
+            if st.button("➕ 添加话题", key="add_topic_btn_top"):
+                st.session_state.show_add_topic_form = True
+                st.rerun()
+
+        # 在适当位置显示添加话题表单
+        if st.session_state.get('show_add_topic_form', False):
+            self._render_add_topic_form(data)
+
         # 检查是否有搜索跳转的话题
         if st.session_state.last_search_topic:
             st.session_state.current_topic = st.session_state.last_search_topic
@@ -1281,6 +1267,126 @@ class FrontendManager:
         # 显示话题列表
         for i, topic in enumerate(filtered_topics):
             self._render_topic_card(topic, i)
+
+    def _render_add_topic_form(self, data):
+        """渲染添加话题表单"""
+        st.markdown("---")
+        st.subheader("➕ 添加新话题")
+
+        # 创建表单
+        with st.form("add_topic_form"):
+            # 群聊选择
+            groups = data.get("chat_groups", [])
+            if not groups:
+                st.warning("没有可用的群聊，请先上传文件进行分析")
+                return
+
+            group_options = [group['group_name'] for group in groups]
+            selected_group_index = st.selectbox(
+                "选择群聊",
+                range(len(groups)),
+                format_func=lambda x: group_options[x]
+            )
+
+            selected_group = groups[selected_group_index]
+
+            # 话题信息
+            topic_name = st.text_input("话题名称*", placeholder="必填")
+            priority = st.selectbox("优先级", ["高", "中", "低"], index=1)
+
+            # 话题描述
+            description = st.text_area("描述/摘要",
+                                       placeholder="输入话题描述...",
+                                       height=100)
+
+            # 相关话题
+            st.write("相关话题：")
+
+            # 获取当前群聊的所有话题
+            all_topics = []
+            for group in groups:
+                for topic in group.get('topics', []):
+                    all_topics.append(topic['topic_name'])
+
+            related_topics = st.multiselect(
+                "选择相关话题",
+                options=all_topics,
+                help="可选"
+            )
+
+            # 提交按钮
+            col1, col2 = st.columns([1, 3])
+            with col1:
+                submit = st.form_submit_button("添加", type="primary")
+            with col2:
+                cancel = st.form_submit_button("取消")
+
+            if cancel:
+                st.session_state.show_add_topic_form = False
+                st.rerun()
+
+            if submit:
+                if not topic_name:
+                    st.error("请填写话题名称")
+                else:
+                    # 调用TopicGraph添加话题
+                    if self.topic_graph:
+                        success, topic_id = self.topic_graph.add_topic_simple(
+                            group_id=selected_group['group_id'],
+                            topic_name=topic_name,
+                            priority=priority,
+                            description=description,
+                            related_topics=related_topics
+                        )
+
+                        if success:
+                            st.success(f"话题添加成功！ID: {topic_id}")
+
+                            # 从topic_graph中重新加载数据到session state
+                            self._sync_data_from_topic_graph()
+
+                            # 重新构建话题映射
+                            self._build_topic_mapping()
+
+                            # 保存到文件
+                            self._save_data_to_files()
+
+                            # 重新初始化模块
+                            self.init_modules()
+
+                            # 关闭表单
+                            st.session_state.show_add_topic_form = False
+                            st.rerun()
+                        else:
+                            st.error(f"添加失败: {topic_id}")
+                    else:
+                        st.error("话题图模块未初始化")
+
+    def _sync_data_from_topic_graph(self):
+        """从topic_graph同步数据到session state"""
+        if not self.topic_graph:
+            return
+
+        # 获取更新后的数据
+        if self.topic_graph.chat_groups:
+            # 确保session state有analysis_data
+            if st.session_state.analysis_data is None:
+                st.session_state.analysis_data = {"chat_groups": []}
+
+            # 更新数据
+            st.session_state.analysis_data["chat_groups"] = self.topic_graph.chat_groups
+
+            # 如果有当前群聊选择，确保它仍然有效
+            if st.session_state.current_group:
+                group_exists = False
+                for group in st.session_state.analysis_data["chat_groups"]:
+                    if group["group_id"] == st.session_state.current_group:
+                        group_exists = True
+                        break
+
+                if not group_exists and st.session_state.analysis_data["chat_groups"]:
+                    # 如果当前群聊不存在，选择第一个群聊
+                    st.session_state.current_group = st.session_state.analysis_data["chat_groups"][0]["group_id"]
 
     def _render_topic_card(self, topic, index):
         """渲染单个话题卡片"""
@@ -1452,7 +1558,7 @@ class FrontendManager:
         if search_button and search_query:
             st.write(f"正在搜索: `{search_query}`")
 
-            # 调用分工3的搜索API
+            # 调用搜索API
             with st.spinner("正在搜索..."):
                 search_type_param = "keyword" if search_type == "关键词" else "ai_semantic"
                 search_results = self.call_search_api(search_query, search_type_param)
@@ -1524,7 +1630,6 @@ class FrontendManager:
 
     def _render_search_topic_records(self, topic):
         """在搜索页面渲染话题聊天记录"""
-        # 问题1：不需要生成详细报告，只显示聊天记录
         # 显示所有摘要
         if topic.get("summaries"):
             st.write("**话题摘要:**")
@@ -1568,12 +1673,11 @@ class FrontendManager:
             self.render_topic_graph(data)
         elif page == "🔍 智能搜索":
             self.render_search(data)
-        elif page == "🗑️ 数据管理":  # 新增页面
+        elif page == "🗑️ 数据管理":
             self.render_data_management(data)
 
 
 if __name__ == "__main__":
-    # 初始化页面配置
     st.set_page_config(
         page_title="群聊分析系统",
         page_icon="💬",
@@ -1594,7 +1698,6 @@ if __name__ == "__main__":
     页面左侧会显示各模块的加载状态，确保所有模块正常加载以获得完整功能。
     """)
 
-    # 创建前端管理器实例并运行
     try:
         frontend = FrontendManager()
         frontend.run()
