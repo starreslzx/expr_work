@@ -2,7 +2,7 @@
 
 ## Clone this repository and navigate to folder
 git clone https://github.com/starreslzx/TAS.git<br>
-cd LearningSpace
+cd TAS
 ## Create environment
 conda create --name tas python=9.12<br>
 conda activate tas
@@ -12,3 +12,4 @@ pip install -r requirements.txt
 streamlit frontmanager.py
 ## Note
 You need to change your api_key in the....
+
