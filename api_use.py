@@ -566,74 +566,74 @@ class ChatAnalyzer:
         return self.analyze_topics(group_name, chat_records, existing_structure, description)
 
 
-def main():
-    """示例运行函数"""
-    API_KEY = "sk-570a56309e00406c961afb132ddb9053"
-
-    # 初始化分析器
-    analyzer = ChatAnalyzer(api_key=API_KEY)
-
-    # 示例聊天记录（如果没有文件，可以使用文本列表）
-    sample_records = [
-        "2023-10-01 10:00 张三: 大家觉得这个新项目怎么样？",
-        "2023-10-01 10:05 李四: 我觉得很有前景，但需要更多细节",
-        "2023-10-01 10:10 王五: 我们需要先做市场调研",
-        "2023-10-01 10:15 张三: 同意，市场调研很重要",
-        "2023-10-01 10:20 李四: 我们可以下周开会讨论分工",
-        "2023-10-01 10:25 王五: 好的，我准备会议材料",
-        "2023-10-01 10:30 张三: 另外，关于预算的问题",
-        "2023-10-01 10:35 李四: 预算需要详细规划",
-        "2023-10-01 10:40 王五: 我们可以参考去年的项目",
-        "2023-10-01 10:45 张三: 好的，我先做个初步预算"
-    ]
-
-    try:
-        # 分析话题
-        print("开始分析聊天记录...")
-        structure = analyzer.analyze_topics(
-            group_name="项目讨论组",
-            chat_records=sample_records,
-            description="新项目初步讨论"
-        )
-
-        # 保存结构
-        analyzer.save_structure("chat_structure.json")
-        print("聊天结构已保存到 chat_structure.json")
-
-        # 显示话题信息
-        print("\n发现的话题:")
-        for group in structure["chat_groups"]:
-            print(f"群聊: {group['group_name']}")
-            for topic in group["topics"]:
-                print(f"  - {topic['topic_name']} (优先级: {topic['priority']})")
-                print(f"    记录数量: {len(topic['related_records'])}条")
-                print(f"    总结: {'; '.join(topic['summaries'])}")
-
-        # 如果有话题，生成报告
-        if structure["chat_groups"] and structure["chat_groups"][0]["topics"]:
-            topic_id = structure["chat_groups"][0]["topics"][0]["topic_id"]
-
-            # 生成报告
-            print(f"\n为话题 {topic_id} 生成报告...")
-            report = analyzer.generate_report(topic_id, "summary")
-            print("报告内容预览:")
-            print(report[:500] + "..." if len(report) > 500 else report)
-
-            # 导出报告
-            analyzer.export_report(topic_id, "report.txt", "summary")
-            print("报告已导出到 report.txt")
-
-        print("\n分析完成！")
-
-    except Exception as e:
-        print(f"运行出错: {e}")
-        import traceback
-        traceback.print_exc()
-        print("请确保：")
-        print("1. 已安装所有依赖: pip install python-docx pdfplumber openai")
-        print("2. 已设置正确的 API 密钥")
-        print("3. 如果使用文件解析，确保文件路径正确")
-
-
-if __name__ == "__main__":
-    main()
+# def main():
+#     """示例运行函数"""
+#     API_KEY = "sk-570a56309e00406c961afb132ddb9053"
+#
+#     # 初始化分析器
+#     analyzer = ChatAnalyzer(api_key=API_KEY)
+#
+#     # 示例聊天记录（如果没有文件，可以使用文本列表）
+#     sample_records = [
+#         "2023-10-01 10:00 张三: 大家觉得这个新项目怎么样？",
+#         "2023-10-01 10:05 李四: 我觉得很有前景，但需要更多细节",
+#         "2023-10-01 10:10 王五: 我们需要先做市场调研",
+#         "2023-10-01 10:15 张三: 同意，市场调研很重要",
+#         "2023-10-01 10:20 李四: 我们可以下周开会讨论分工",
+#         "2023-10-01 10:25 王五: 好的，我准备会议材料",
+#         "2023-10-01 10:30 张三: 另外，关于预算的问题",
+#         "2023-10-01 10:35 李四: 预算需要详细规划",
+#         "2023-10-01 10:40 王五: 我们可以参考去年的项目",
+#         "2023-10-01 10:45 张三: 好的，我先做个初步预算"
+#     ]
+#
+#     try:
+#         # 分析话题
+#         print("开始分析聊天记录...")
+#         structure = analyzer.analyze_topics(
+#             group_name="项目讨论组",
+#             chat_records=sample_records,
+#             description="新项目初步讨论"
+#         )
+#
+#         # 保存结构
+#         analyzer.save_structure("chat_structure.json")
+#         print("聊天结构已保存到 chat_structure.json")
+#
+#         # 显示话题信息
+#         print("\n发现的话题:")
+#         for group in structure["chat_groups"]:
+#             print(f"群聊: {group['group_name']}")
+#             for topic in group["topics"]:
+#                 print(f"  - {topic['topic_name']} (优先级: {topic['priority']})")
+#                 print(f"    记录数量: {len(topic['related_records'])}条")
+#                 print(f"    总结: {'; '.join(topic['summaries'])}")
+#
+#         # 如果有话题，生成报告
+#         if structure["chat_groups"] and structure["chat_groups"][0]["topics"]:
+#             topic_id = structure["chat_groups"][0]["topics"][0]["topic_id"]
+#
+#             # 生成报告
+#             print(f"\n为话题 {topic_id} 生成报告...")
+#             report = analyzer.generate_report(topic_id, "summary")
+#             print("报告内容预览:")
+#             print(report[:500] + "..." if len(report) > 500 else report)
+#
+#             # 导出报告
+#             analyzer.export_report(topic_id, "report.txt", "summary")
+#             print("报告已导出到 report.txt")
+#
+#         print("\n分析完成！")
+#
+#     except Exception as e:
+#         print(f"运行出错: {e}")
+#         import traceback
+#         traceback.print_exc()
+#         print("请确保：")
+#         print("1. 已安装所有依赖: pip install python-docx pdfplumber openai")
+#         print("2. 已设置正确的 API 密钥")
+#         print("3. 如果使用文件解析，确保文件路径正确")
+#
+#
+# if __name__ == "__main__":
+#     main()

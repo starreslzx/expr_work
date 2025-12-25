@@ -7,12 +7,14 @@ from openai import OpenAI
 
 class Searcher:
     def __init__(self, data_file: str = "data.json", token_file: str = "api_token.txt"):
+        # 初始化搜索器，加载数据和API客户端
         self.data_file = self._resolve_file_path(data_file)
         self.token_file = self._resolve_file_path(token_file)
         self.data = self._load_data()
         self.client = self._init_openai_client()
 
     def _resolve_file_path(self, file_path: str) -> str:
+        # 解析文件路径，尝试多个可能位置
         if os.path.isabs(file_path):
             return file_path
 
@@ -29,6 +31,7 @@ class Searcher:
         return os.path.abspath(file_path)
 
     def _load_data(self) -> Dict[str, Any]:
+        # 加载JSON数据文件，支持注释
         try:
             with open(self.data_file, 'r', encoding='utf-8') as f:
                 content = f.read()
@@ -42,6 +45,7 @@ class Searcher:
             raise Exception(f"数据文件 {self.data_file} 格式错误")
 
     def _init_openai_client(self) -> OpenAI:
+        # 从token文件初始化OpenAI客户端
         try:
             with open(self.token_file, 'r', encoding='utf-8') as f:
                 api_key = f.read().strip()
@@ -55,6 +59,7 @@ class Searcher:
 
     def keyword_search(self, query: str, fields: List[str] = None,
                        group_name: str = None, topic_name: str = None) -> List[Dict[str, Any]]:
+        # 关键词搜索，在指定字段中查找匹配项
         if fields is None:
             fields = ['group_name', 'topic_name', 'summaries', 'related_topics']
 
@@ -123,6 +128,7 @@ class Searcher:
                            group_name: str = None, topic_name: str = None,
                            use_batch_mode: bool = False, batch_size: int = 20,
                            exclude_topic_ids: List[str] = None) -> List[Dict[str, Any]]:
+        # AI语义搜索，可选择分批处理
         if use_batch_mode:
             return self._ai_semantic_search_batch(query, max_results, group_name, topic_name, batch_size,
                                                   exclude_topic_ids)
@@ -132,6 +138,7 @@ class Searcher:
     def _ai_semantic_search_single(self, query: str, max_results: int = 10,
                                    group_name: str = None, topic_name: str = None,
                                    exclude_topic_ids: List[str] = None) -> List[Dict[str, Any]]:
+        # 单批AI语义搜索
         context = self._build_search_context(group_name, topic_name, exclude_topic_ids)
 
         if not context:
@@ -190,6 +197,7 @@ class Searcher:
     def _ai_semantic_search_batch(self, query: str, max_results: int = 10,
                                   group_name: str = None, topic_name: str = None,
                                   batch_size: int = 20, exclude_topic_ids: List[str] = None) -> List[Dict[str, Any]]:
+        # 分批AI语义搜索，处理大量数据
         all_topics = self._get_all_topics(group_name, topic_name, exclude_topic_ids)
 
         if not all_topics:
@@ -258,6 +266,7 @@ class Searcher:
         return self._limit_results_per_group(all_results, max_results)
 
     def _limit_results_per_group(self, results: List[Dict[str, Any]], max_results: int) -> List[Dict[str, Any]]:
+        # 限制每个群聊最多返回3个结果
         grouped_results = {}
 
         for result in results:
@@ -276,6 +285,7 @@ class Searcher:
 
     def _get_all_topics(self, group_name: str = None, topic_name: str = None, exclude_topic_ids: List[str] = None) -> \
     List[Dict[str, Any]]:
+        # 获取所有话题，支持过滤条件
         all_topics = []
         group_name_lower = group_name.lower() if group_name else None
         topic_name_lower = topic_name.lower() if topic_name else None
@@ -300,6 +310,7 @@ class Searcher:
         return all_topics
 
     def _build_batch_context(self, batch: List[Dict[str, Any]]) -> str:
+        # 构建批量处理的上下文信息
         context_parts = []
 
         for item in batch:
@@ -322,6 +333,7 @@ class Searcher:
 
     def _build_search_context(self, group_name: str = None, topic_name: str = None,
                               exclude_topic_ids: List[str] = None) -> str:
+        # 构建AI搜索的上下文信息
         context_parts = []
         group_name_lower = group_name.lower() if group_name else None
         topic_name_lower = topic_name.lower() if topic_name else None
@@ -354,6 +366,7 @@ class Searcher:
 
     def _parse_ai_response(self, ai_response: str, max_results: int,
                            group_name: str = None, topic_name: str = None) -> List[Dict[str, Any]]:
+        # 解析AI返回的JSON响应
         try:
             json_match = re.search(r'\{.*\}', ai_response, re.DOTALL)
             if json_match:
@@ -385,6 +398,7 @@ class Searcher:
 
     def _find_topic_by_id(self, topic_id: str, group_name: str = None, topic_name: str = None) -> Optional[
         Dict[str, Any]]:
+        # 根据话题ID查找话题信息
         group_name_lower = group_name.lower() if group_name else None
         topic_name_lower = topic_name.lower() if topic_name else None
 
@@ -415,6 +429,7 @@ class Searcher:
     def search(self, query: str, use_ai: bool = True,
                ai_max_results: int = 10, group_name: str = None, topic_name: str = None,
                use_batch_mode: bool = False, batch_size: int = 20) -> Dict[str, Any]:
+        # 综合搜索接口，结合关键词和AI搜索
         keyword_results = self.keyword_search(
             query,
             group_name=group_name,
@@ -449,6 +464,7 @@ class Searcher:
         }
 
     def display_results(self, search_results: Dict[str, Any]):
+        # 在控制台格式化显示搜索结果
         print(f"\n搜索查询: {search_results['query']} ")
 
         filters = search_results['search_filters']
@@ -490,12 +506,14 @@ class Searcher:
                 print()
 
     def get_available_groups(self) -> List[str]:
+        # 获取所有可用的群聊名称
         groups = []
         for group in self.data.get('chat_groups', []):
             groups.append(group['group_name'])
         return sorted(groups)
 
     def get_available_topics(self, group_name: str = None) -> List[str]:
+        # 获取所有可用的话题名称，支持按群聊过滤
         topics = []
         group_name_lower = group_name.lower() if group_name else None
 
@@ -506,143 +524,3 @@ class Searcher:
             for topic in group.get('topics', []):
                 topics.append(topic['topic_name'])
         return sorted(topics)
-
-
-def main():
-    data_file = input("请输入数据文件路径 (默认: data.json): ").strip()
-    if not data_file:
-        data_file = "data.json"
-
-    token_file = input("请输入API token文件路径 (默认: api_token.txt): ").strip()
-    if not token_file:
-        token_file = "api_token.txt"
-
-    try:
-        searcher = Searcher(data_file, token_file)
-        print(f"成功加载数据文件: {searcher.data_file}")
-        print(f"成功加载token文件: {searcher.token_file}")
-    except Exception as e:
-        print(f"初始化失败: {e}")
-        print("请检查文件路径是否正确，然后重新运行程序。")
-        return
-
-    while True:
-        print("\n=== 微信聊天记录搜索系统 ===")
-        print("可选操作:")
-        print("1. 普通搜索")
-        print("2. 指定群聊搜索")
-        print("3. 指定话题搜索")
-        print("4. 查看可用群聊")
-        print("5. 查看可用话题")
-        print("6. 退出")
-
-        choice = input("\n请选择操作 (1-6): ").strip()
-
-        if choice == '6':
-            break
-        elif choice == '4':
-            groups = searcher.get_available_groups()
-            print("\n可用群聊:")
-            for i, group in enumerate(groups, 1):
-                print(f"{i}. {group}")
-            continue
-        elif choice == '5':
-            group_name = input("请输入要查看话题的群聊名称 (留空查看所有): ").strip() or None
-            topics = searcher.get_available_topics(group_name)
-            scope = f"群聊 '{group_name}' 的" if group_name else "所有"
-            print(f"\n{scope}可用话题:")
-            for i, topic in enumerate(topics, 1):
-                print(f"{i}. {topic}")
-            continue
-
-        query = input("\n请输入搜索关键词: ").strip()
-        if not query:
-            continue
-
-        group_name = None
-        topic_name = None
-
-        if choice == '2':
-            groups = searcher.get_available_groups()
-            print("\n可用群聊:")
-            for i, group in enumerate(groups, 1):
-                print(f"{i}. {group}")
-            group_choice = input("\n请选择群聊编号或输入群聊名称: ").strip()
-            if group_choice.isdigit() and 1 <= int(group_choice) <= len(groups):
-                group_name = groups[int(group_choice) - 1]
-            else:
-                group_name = group_choice
-
-        elif choice == '3':
-            topics = searcher.get_available_topics()
-            print("\n可用话题:")
-            for i, topic in enumerate(topics, 1):
-                print(f"{i}. {topic}")
-            topic_choice = input("\n请选择话题编号或输入话题名称: ").strip()
-            if topic_choice.isdigit() and 1 <= int(topic_choice) <= len(topics):
-                topic_name = topics[int(topic_choice) - 1]
-            else:
-                topic_name = topic_choice
-
-        use_ai = input("\n是否使用AI搜索? (y/n, 默认y): ").strip().lower() != 'n'
-
-        if use_ai:
-            try:
-                ai_max_results = int(input("请输入AI搜索结果数量 (默认10): ").strip() or "10")
-            except ValueError:
-                ai_max_results = 10
-
-            all_topics_count = len(searcher._get_all_topics(group_name, topic_name))
-            use_batch_mode = all_topics_count > 20
-
-            if use_batch_mode:
-                print(f"检测到 {all_topics_count} 个话题，将使用分批处理模式")
-                try:
-                    batch_size = int(input("请输入每批处理的话题数量 (默认20): ").strip() or "20")
-                except ValueError:
-                    batch_size = 20
-            else:
-                batch_size = 20
-        else:
-            ai_max_results = 10
-            use_batch_mode = False
-            batch_size = 20
-
-        print("\n正在执行关键词搜索...")
-        keyword_results = searcher.keyword_search(
-            query,
-            group_name=group_name,
-            topic_name=topic_name
-        )
-
-        ai_results = []
-        if use_ai:
-            print("正在执行AI语义搜索...")
-            ai_results = searcher.ai_semantic_search(
-                query,
-                max_results=ai_max_results,
-                group_name=group_name,
-                topic_name=topic_name,
-                use_batch_mode=use_batch_mode,
-                batch_size=batch_size
-            )
-
-        search_results = {
-            'query': query,
-            'keyword_results': keyword_results,
-            'ai_recommendations': ai_results,
-            'search_filters': {
-                'group_name': group_name,
-                'topic_name': topic_name
-            },
-            'stats': {
-                'keyword_matches': len(keyword_results),
-                'ai_recommendations': len(ai_results)
-            }
-        }
-
-        searcher.display_results(search_results)
-
-
-if __name__ == "__main__":
-    main()

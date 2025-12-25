@@ -5,7 +5,7 @@ import threading
 
 
 class TopicGraph:
-    """增强版话题图结构 - 支持向现有话题添加聊天记录"""
+    """话题图结构 """
 
     def __init__(self, json_file: str = None, auto_cleanup_days: int = 30):
         self.chat_groups: List[Dict[str, Any]] = []  # 聊天群组存储
@@ -108,7 +108,7 @@ class TopicGraph:
 
     def add_topic_simple(self, group_id: str, topic_name: str, priority: str, description: str = "",
                          related_topics: List[str] = None) -> Tuple[bool, str]:
-        """简化版添加话题，返回(是否成功, 结果消息)"""
+        """单个添加话题"""
         if related_topics is None:
             related_topics = []
 
@@ -160,7 +160,7 @@ class TopicGraph:
 
     def add_topic_complete(self, group_id: str, topic_id: str, topic_name: str, priority: str,
                            summaries: List[str], related_records: List[str], related_topics: List[str]) -> Tuple[bool, str]:
-        """完整版添加话题，返回(是否成功, 结果消息)"""
+        """多个添加话题"""
         # 检查话题ID是否已存在
         if self._topic_id_exists(topic_id):
             return False, f"话题ID {topic_id} 已存在，请使用不同的ID"
